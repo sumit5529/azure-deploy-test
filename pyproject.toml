@@ -1,8 +1,9 @@
+[
 [tool.poetry]
-name = "your-fastapi-app"
+name = "azure-deploy-test"
 version = "0.1.0"
-description = "FastAPI application deployed on Azure"
-authors = ["Your Name <your.email@example.com>"]
+description = "Azure Deploy Test - FastAPI application for testing Azure deployment with Poetry"
+authors = ["Your Team <team@company.com>"]
 package-mode = false
 
 [tool.poetry.dependencies]
