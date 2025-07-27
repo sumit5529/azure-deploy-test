@@ -102,7 +102,7 @@ jobs:
         run: poetry install --no-root
 
       - name: Make startup script executable
-        run: chmod +x startup_test.sh
+        run: chmod +x startup.sh
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
