@@ -143,7 +143,7 @@
 #         publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}  # ✅ From old version
 #         package: release.zip
 
-name: Build and deploy Python app to Azure Web App - ita-be-prod
+name: Build and deploy Python app to Azure Web App - azure-deploy-test
 
 on:
   push:
@@ -163,21 +163,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      # - name: Check if push was direct
-      #   run: |
-      #     # Get the commit message
-      #     COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+      - name: Check if push was direct
+        run: |
+          # Get the commit message
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 
-      #     # Check if this is a direct push to main (not via PR)
-      #     if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/prod" ]]; then
-      #       # If the commit message contains "Merge pull request", it's from a PR merge
-      #       if [[ "$COMMIT_MESSAGE" =~ "Merge pull request" ]]; then
-      #         echo "This is a merge from a pull request, which is allowed."
-      #       else
-      #         echo "::error::Direct pushes to the prod branch are not allowed. Please use a pull request instead."
-      #         exit 1
-      #       fi
-      #     fi
+          # Check if this is a direct push to prod (not via PR)
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/prod" ]]; then
+            # If the commit message contains "Merge pull request", it's from a PR merge
+            if [[ "$COMMIT_MESSAGE" =~ "Merge pull request" ]]; then
+              echo "This is a merge from a pull request, which is allowed."
+            else
+              echo "::error::Direct pushes to the prod branch are not allowed. Please use a pull request instead."
+              exit 1
+            fi
+          fi
 
       - name: Install and configure Poetry
         uses: snok/install-poetry@v1
@@ -190,7 +190,6 @@ jobs:
 
       - name: Install dependencies
         run: poetry install --only main --no-root
-        # Updated: Use --only main instead of --no-dev and add --no-root to prevent package installation issues
 
       - name: Make startup script executable
         run: chmod +x startup_prod.sh
@@ -203,7 +202,6 @@ jobs:
         uses: azure/webapps-deploy@v2
         id: deploy-to-webapp
         with:
-           app-name: 'azure-deploy-test'
-           slot-name: 'Production'
-           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}
-# name: Build and Deploy FastAPI to Azure Web App - azure-deploy-test
+          app-name: 'azure-deploy-test'
+          slot-name: 'Production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}
