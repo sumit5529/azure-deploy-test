@@ -1,9 +1,14 @@
-#!/bin/bash
+set -e
 
-# startup.sh - Simplified startup script for Azure Web App
+echo "=== Starting ita-be-prod FastAPI Application ==="
 
-echo "Starting FastAPI application..."
+# Configure Poetry settings
+poetry config virtualenvs.in-project false
+poetry config virtualenvs.create true
 
-# Azure manages the virtual environment automatically
-# Just start the application directly
-python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+# Install dependencies (Azure should handle this, but ensure it's done)
+poetry install --only main --no-root
+
+# Use poetry run with uvicorn directly (keeping it simple)
+echo "Starting FastAPI with uvicorn via poetry run..."
+exec poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1#!/bin/bash

@@ -59,86 +59,151 @@
 #           app-name: 'azure-deploy-test'
 #           slot-name: 'Production'
 #           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}
-name: Build and Deploy FastAPI to Azure Web App - azure-deploy-test
+# name: Build and Deploy FastAPI to Azure Web App - azure-deploy-test
+
+# on:
+#   push:
+#     branches:
+#       - main  # Deploy when pushing to main branch
+#   workflow_dispatch:  # Allow manual deployment
+
+# env:
+#   AZURE_WEBAPP_NAME: 'azure-deploy-test'  # ✅ Replaced
+#   PYTHON_VERSION: '3.11'
+
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+
+#     permissions:
+#       contents: read  # Required for actions/checkout
+
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+
+#     - name: Set up Python
+#       uses: actions/setup-python@v4
+#       with:
+#         python-version: ${{ env.PYTHON_VERSION }}
+
+#     - name: Install and configure Poetry
+#       uses: snok/install-poetry@v1
+#       with:
+#         version: 1.8.5
+#         virtualenvs-create: true
+#         virtualenvs-in-project: true
+#         virtualenvs-path: .venv
+#         installer-parallel: true
+
+#     - name: Load cached venv
+#       id: cached-poetry-dependencies
+#       uses: actions/cache@v3
+#       with:
+#         path: .venv
+#         key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+
+#     - name: Install dependencies
+#       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+#       run: poetry install --no-dev
+
+#     - name: Make startup script executable
+#       run: chmod +x startup.sh
+
+#     - name: Run tests (optional)
+#       run: |
+#         # Uncomment if you have tests
+#         # poetry run pytest
+
+#     - name: Create deployment package
+#       run: |
+#         mkdir -p deployment
+#             # Copy application files (only if they exist)
+#         cp -r app deployment/ 2>/dev/null || echo "No app directory found"
+#         cp startup.sh deployment/ 2>/dev/null || echo "No startup.sh found"
+#         cp pyproject.toml deployment/ 2>/dev/null || echo "No pyproject.toml found"
+#         cp poetry.lock deployment/ 2>/dev/null || echo "No poetry.lock found"
+        
+#         # Copy virtual environment
+#         cp -r .venv deployment/ 2>/dev/null || echo "No .venv found"
+        
+#         # Copy README if it exists
+#         [ -f README.md ] && cp README.md deployment/ || echo "No README.md found, skipping"
+        
+#         # Create zip file
+#         cd deployment
+#         zip -r ../release.zip . -x "*.git*" "*.pytest_cache*" "*__pycache__*"
+
+#     - name: Deploy to Azure Web App
+#       uses: azure/webapps-deploy@v3
+#       id: deploy-to-webapp
+#       with:
+#         app-name: ${{ env.AZURE_WEBAPP_NAME }}                   # ✅ From old version
+#         slot-name: 'Production'                                  # ✅ From old version
+#         publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}  # ✅ From old version
+#         package: release.zip
+
+name: Build and deploy Python app to Azure Web App - ita-be-prod
 
 on:
   push:
     branches:
-      - main  # Deploy when pushing to main branch
-  workflow_dispatch:  # Allow manual deployment
-
-env:
-  AZURE_WEBAPP_NAME: 'azure-deploy-test'  # ✅ Replaced
-  PYTHON_VERSION: '3.11'
+      - prod
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read  # Required for actions/checkout
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+      - name: Set up Python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
 
-    - name: Install and configure Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.8.5
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-        virtualenvs-path: .venv
-        installer-parallel: true
+      - name: Check if push was direct
+        run: |
+          # Get the commit message
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
 
-    - name: Load cached venv
-      id: cached-poetry-dependencies
-      uses: actions/cache@v3
-      with:
-        path: .venv
-        key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+          # Check if this is a direct push to main (not via PR)
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/prod" ]]; then
+            # If the commit message contains "Merge pull request", it's from a PR merge
+            if [[ "$COMMIT_MESSAGE" =~ "Merge pull request" ]]; then
+              echo "This is a merge from a pull request, which is allowed."
+            else
+              echo "::error::Direct pushes to the prod branch are not allowed. Please use a pull request instead."
+              exit 1
+            fi
+          fi
 
-    - name: Install dependencies
-      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-      run: poetry install --no-dev
+      - name: Install and configure Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.8.5
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          virtualenvs-path: .venv
+          installer-parallel: true
 
-    - name: Make startup script executable
-      run: chmod +x startup.sh
+      - name: Install dependencies
+        run: poetry install --only main --no-root
+        # Updated: Use --only main instead of --no-dev and add --no-root to prevent package installation issues
 
-    - name: Run tests (optional)
-      run: |
-        # Uncomment if you have tests
-        # poetry run pytest
+      - name: Make startup script executable
+        run: chmod +x startup_prod.sh
 
-    - name: Create deployment package
-      run: |
-        mkdir -p deployment
-            # Copy application files (only if they exist)
-        cp -r app deployment/ 2>/dev/null || echo "No app directory found"
-        cp startup.sh deployment/ 2>/dev/null || echo "No startup.sh found"
-        cp pyproject.toml deployment/ 2>/dev/null || echo "No pyproject.toml found"
-        cp poetry.lock deployment/ 2>/dev/null || echo "No poetry.lock found"
-        
-        # Copy virtual environment
-        cp -r .venv deployment/ 2>/dev/null || echo "No .venv found"
-        
-        # Copy README if it exists
-        [ -f README.md ] && cp README.md deployment/ || echo "No README.md found, skipping"
-        
-        # Create zip file
-        cd deployment
-        zip -r ../release.zip . -x "*.git*" "*.pytest_cache*" "*__pycache__*"
+      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+      - name: Zip artifact for deployment
+        run: zip release.zip ./* -r
 
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v3
-      id: deploy-to-webapp
-      with:
-        app-name: ${{ env.AZURE_WEBAPP_NAME }}                   # ✅ From old version
-        slot-name: 'Production'                                  # ✅ From old version
-        publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}  # ✅ From old version
-        package: release.zip
+      - name: 'Deploy to Azure Web App'
+        uses: azure/webapps-deploy@v2
+        id: deploy-to-webapp
+        with:
+           app-name: 'azure-deploy-test'
+           slot-name: 'Production'
+           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5BA560F871F549D191D132383C1E3CE3 }}
+# name: Build and Deploy FastAPI to Azure Web App - azure-deploy-test
