@@ -1,14 +1,29 @@
+
+
+# Enable error handling
 set -e
 
-echo "=== Starting ita-be-prod FastAPI Application ==="
 
-# Configure Poetry settings
+# Update and install necessary packages
+apt-get update && apt-get install sudo
+sudo apt-get install -y poppler-data poppler-utils tesseract-ocr libgl1-mesa-dev libglib2.0-0 libmagic1 libmagic-dev
+
+# Install Poetry 1.8.3 if not available
+if ! command -v poetry &> /dev/null; then
+    echo "Installing Poetry 1.8.3..."
+    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.3 python3 -
+    export PATH="/root/.local/bin:$PATH"
+fi
+
 poetry config virtualenvs.in-project false
 poetry config virtualenvs.create true
 
-# Install dependencies (Azure should handle this, but ensure it's done)
-poetry install --only main --no-root
+poetry install
 
-# Use poetry run with uvicorn directly (keeping it simple)
-echo "Starting FastAPI with uvicorn via poetry run..."
-exec poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1#!/bin/bash
+# Check if .venv exists, if not create it explicitly
+if [ ! -d ".venv" ]; then
+    poetry env use python3
+fi
+
+# Use poetry run instead of manual activation
+poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
