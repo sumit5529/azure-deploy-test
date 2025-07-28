@@ -28,4 +28,6 @@ fi
 
 # Start the FastAPI app
 echo "Starting Uvicorn server..."
-poetry run uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+
