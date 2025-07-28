@@ -1,27 +1,31 @@
-
-
-# Enable error handling
+#!/bin/bash
 set -e
 
+# Export PATH to include Poetry if installed via ~/.local/bin
+export PATH="$HOME/.local/bin:$PATH"
 
-# Update and install necessary packages
+# Define poetry virtualenv path (adjust as needed)
+VENV_PATH="$HOME/antenv"
 
-# Install Poetry 1.8.3 if not available
+# Install poetry if not present
 if ! command -v poetry &> /dev/null; then
-    echo "Installing Poetry 1.8.3..."
-    curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.8.3 python3 -
-    export PATH="/root/.local/bin:$PATH"
+    echo "Installing Poetry..."
+    curl -sSL https://install.python-poetry.org | python3 -
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
-poetry config virtualenvs.in-project false
+# Configure Poetry
 poetry config virtualenvs.create true
+poetry config virtualenvs.in-project false
+poetry install --no-root
 
-poetry install
-
-# Check if .venv exists, if not create it explicitly
-if [ ! -d ".venv" ]; then
+# Create venv if missing (optional)
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Creating poetry virtual environment..."
     poetry env use python3
+    poetry run pip install uvicorn
 fi
 
-# Use poetry run instead of manual activation
-poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Start the FastAPI app
+echo "Starting Uvicorn server..."
+poetry run uvicorn app.main:app --host 0.0.0.0 --port "${PORT:-8000}"
